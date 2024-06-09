@@ -1,7 +1,0 @@
-Added a line that prints the size of homologJobVector , in PrimaryJobData.cpp : printCorrespondenceTable. The motivation is the case of 1DVF, which is an antibody Fc-Fc dimer. There are literally thousands of matches at the fasta_lwp level (for each chain, not sure how many match all four chains, maybe all do), plus since there are four chains there are at least (4!) possibilities for e
-ach. and it has been running for four days
-. Now at least I will know how many are left to do.
-Also for some reason the job submission command was still submitting to slurm rather than just running ina system call..
---This line, and those below, will be ignored--
-
-M    PrimaryJobData.cpp
