@@ -1769,7 +1769,7 @@ int    HomologJob::prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores (Par
        thread.forceConstant   = myParameterReader.alignmentForcesForceConstant;
        thread.updThreadingPartner(1).biopolymerClass =  myParameterReader.myBiopolymerClassContainer.updBiopolymerClass(modifiedParentChainId(alignmentChainInParent));
        thread.setDefaultStartEndResidues(); // sets the start and end residues to the BiopolymerClass FirstResidue and LastResidue, for the two BiopolymerClass's. Note that the BiopolymerClass's must be defined first.
-       thread.isGapped        = myParameterReader.alignmentForcesIsGapped;
+       //thread.isGapped        = myParameterReader.alignmentForcesIsGapped;
        thread.deadLengthIsFractionOfInitialLength = myParameterReader.alignmentForcesDeadLengthIsFractionOfInitialLength;
        if (thread.deadLengthIsFractionOfInitialLength){std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Unexplained error!"<<std::endl; exit(1); }
        thread.deadLengthFraction = myParameterReader.alignmentForcesDeadLengthFraction;
@@ -2018,7 +2018,14 @@ int HomologJob::translateMutationVectorFromParent(){
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" myChain = "<<myChain<<std::endl;  
         BiopolymerClass myBiopolymerClass = updBiopolymerClassContainer().updBiopolymerClass(myChain); // If this step fails, it is possible that the HomologJob is using a PDB ID that has had that chain manually removed. fasta goes straight to RCSB, rather than using the manipulated structures.  So you can remove the chain from the fasta file if you really don't want to use it.
         //BiopolymerClass parentBiopolymerClass = parentBiopolymerClassContainer.updBiopolymerClass(parentChain);
-        TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( (*parentBiopolymerClassContainer).updBiopolymerClass(parentChain) ); // The second argument , gap penalty, has a default value of -1
+        //TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( (*parentBiopolymerClassContainer).updBiopolymerClass(parentChain) ); // The second argument , gap penalty, has a default value of -1
+	
+	//New way to create alignments. MMB no longer uses BiopolymerClassContainer, instead one must create a ThreadingStruct using an AtomSpringContainer, and then use the ThreadingStruct's computeAlign() method.
+	AtomSpringContainer myAtomSpringContainer;       	
+	// setting spring constant to 10k, then backboneONly to true 
+        ThreadingStruct myThreadingStruct = myAtomSpringContainer.createGappedThreading(myChain , parentChain,10000 , 1 ,updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer));
+        TAlign align = myThreadingStruct.computeAlign();
+
         //TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( parentBiopolymerClass ); // The second argument , gap penalty, has a default value of -1
         //bool successfullyFoundCorrespondingMutationInCurrentBiopolymer = false;
         Mutation myMutation  ;
