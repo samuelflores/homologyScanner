@@ -247,7 +247,7 @@ int HomologJob::writeRenumberedPdbIfAbsent(){
 
 
 void  HomologJob::setPdbId(std::string myPdbId){
-    std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" this function is being called with argument : >"<<myPdbId<<")"<<std::endl;
+    std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" this function is being called with argument : >"<<myPdbId<<"<"<<std::endl;
     if (myPdbId.length() != 4){
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<"  Length of provided  PDB ID "<<myPdbId<<" is "<<myPdbId.length()<<" . Expected 4! "<<std::endl;  exit(1);} 
     else {
@@ -2022,9 +2022,15 @@ int HomologJob::translateMutationVectorFromParent(){
 	
 	//New way to create alignments. MMB no longer uses BiopolymerClassContainer, instead one must create a ThreadingStruct using an AtomSpringContainer, and then use the ThreadingStruct's computeAlign() method.
 	AtomSpringContainer myAtomSpringContainer;       	
+        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<"calling myAtomSpringContainer.createGappedThreading( "<<myChain<<","<<parentChain<<","<<10000<<","<<1<<",updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer))"<<  std::endl;  
 	// setting spring constant to 10k, then backboneONly to true 
         ThreadingStruct myThreadingStruct = myAtomSpringContainer.createGappedThreading(myChain , parentChain,10000 , 1 ,updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer));
+        //std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;  
+	std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<myThreadingStruct.updThreadingPartner(0).biopolymerClass. getSequence()<<std::endl;
+	std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<myThreadingStruct.updThreadingPartner(1).biopolymerClass. getSequence()<<std::endl;
+        myThreadingStruct.setLongSequences();
         TAlign align = myThreadingStruct.computeAlign();
+        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;  
 
         //TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( parentBiopolymerClass ); // The second argument , gap penalty, has a default value of -1
         //bool successfullyFoundCorrespondingMutationInCurrentBiopolymer = false;
