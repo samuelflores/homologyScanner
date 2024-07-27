@@ -1,6 +1,7 @@
 #include "PrimaryJobData.h"
 #include "ParameterReader.h"
 #include "Repel.h"
+#include "Breed.h" // because we need the RERUNALWAYS pragma variable 
 #include <stdlib.h>     /* system, NULL, EXIT_FAILURE */
 #include <string>
 #include <sstream>
@@ -17,7 +18,6 @@
 
 #define PARENTCHAINPREFIX "P"
 #define SEQUENCEIDENTITYCUTOFF 90.0
-
 int GenericJob::checkFileStatus(std::string myFileName){/*
     ifstream testFile(myFileName.c_str());
     int returnValue = (testFile.good()); // Returns true for good file, false for bad file.
@@ -1089,14 +1089,15 @@ void PrimaryJob::addHomologJob(HomologJob & myHomologJob){
        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
     }
 };
-
+// This is now implemented in MMB Utils.h and Utils.cpp
+/*
 void mySystemCall(std::string commandString){
     std::cout << __FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" About to make system call for string : >"<<commandString<<"< "<<std::endl;
     int systemCallReturnValue ;
     systemCallReturnValue = system(commandString.c_str());
     std::cout << __FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Just completed system call for string : >"<<commandString<<"< "<<std::endl;
     std::cout << __FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Got return code of : "<<systemCallReturnValue<<std::endl;
-}
+}*/
 
 std::string HomologJob::getJobName(){
     std::string myJobName = getPdbId() + "." + getComplexString() + "." +getParentPrimaryJobPointer()->getPdbId() +"." + getParentPrimaryJobPointer()->getComplexString() + getParentPrimaryJobPointer()->breederParameterReader.oneMutationString;
@@ -1195,7 +1196,6 @@ void PrimaryJob::spawnSingleHomologyScannerRunsFromHomologJobVector(){
         homologJobVector.pop_back();
     }
 }
-        //homologyScannerSingleRunCommand += -FASTAEXECUTABLE /usr/local//fasta_lwp/fasta_lwp.pl -FASTATEMPDIRECTORY /usr/local//fasta_lwp///temp/ -BREEDEREXECUTABLE /usr/local/MMB/bin/breeder -BREEDERMAINDIRECTORY /home/sam/svn/breeder -DATABASE mmb -MMBEXECUTABLE /usr/local/MMB/bin/MMB -LASTSTAGE 1 -FOLDXSCRIPT /usr/local/MMB/bin/run-foldx.3.pl -FOLDXEXECUTABLE //usr/local//foldx/foldx -SQLSERVER localhost -SQLEXECUTABLE /usr/bin/mysql -SQLPASSWORD mMBc9IU5@r -USER root -SQLUSER mmbcgi -JOBLIBRARYPATH /usr/lib/x86_64-linux-gnu/blas:/home/sam/svn/breeder/build:/usr/local/MMB/lib -REPORTINGINTERVAL 0.000001 -NUMREPORTINGINTERVALS 2 -FLEXIBILITYWINDOWOFFSET 2 -TEMPERATURE 298 -ID homoScan.1 -ONEMUTANT A-107-A -WORKINGDIRECTORY /data//runs/homoScan.1/3NSS  -CHAINSINCOMPLEX A,B   -PDBID 3NSS  -SQLSYSTEM MySQL -ACCOUNT X -MOBILIZERRADIUS 0.0 -PARTITION core ";
 
 int PrimaryJob::createSingleHomologJobAndAddToVector( std::string myComplexChains, std::string myHomologPdbId){
 
@@ -1479,6 +1479,8 @@ void PrimaryJob::printCorrespondenceTable(){
 			std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" HomologJob mysql  PDB ID: "<<homologJobVector.back().dbConnection->getPdbId()<<endl;
 			std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" HomologJob jobName      : "<<homologJobVector.back().dbConnection->getJobID()<<endl;
                         // now tempHomologJob's getMutationString() will work from  tempHomologJob's  mutationVector, which is duly translated.
+			// RERUNALWAYS, when defined, makes homologyScanner do all runs, even if it has already done them before. We want to rerun and do stability.
+                        #ifndef RERUNALWAYS
                         if (homologJobVector.back().dbConnection->getNumJobs("completed", homologJobVector.back().getMutationString() )){
                             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<< " This job has already been computed. Moving on to the next one."<<std::endl;
                std::string leafJobCompleteEmailContents = "Dear User,\n\n \
@@ -1494,21 +1496,16 @@ If useful, this result has been added to the synopsis table. If the calculation 
 
                             //continue;
                         } else {
-                            // SCF good place to populate sequence table. Then it will be ready for when breeder wants to set the pdbNumberedMutationString.
-                            // Except it appears the biopolymers have already been renumbered at this point. so no.
-                            //Chromosome tempChromosome (homologJobVector.back(). getMutationString(), homologJobVector.back().updBiopolymerClassContainer() );
-                            //tempChromosome.populateSequenceTable(*(homologJobVector.back().dbConnection)); // does this need an asterisk?
-                            
+		        #endif 
                             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<< " This job has NOT already been computed. Continuing with it."<<std::endl;
                             // We used to check for failure associated with pdb IDs. However this led to the problem that another job running simultaneously could provisionally set status to FAIL, and the current job would conclude the job is not worth running. However we are now running much faster, so it is not even worth checking this.
-	                    /*if (homologJobVector.back().dbConnection->getPdbStatusFail()) {
-                                //continue;
-	                    } else { */
                             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
                             homologJobVector.back().printBreederCommand();
                             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
 	                    //}
+			#ifndef RERUNALWAYS
                         }
+		        #endif
                         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
                         if (numMatchingComplexes > 1) {mysqlAggregationCommand += std::string(" OR ");}
                         mysqlAggregationCommand += homologJobVector.back().getMysqlAggregationFragment();
