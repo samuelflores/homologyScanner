@@ -18,6 +18,8 @@
 
 #define PARENTCHAINPREFIX "P"
 #define SEQUENCEIDENTITYCUTOFF 90.0
+#define GAPPENALTY  -1.0
+#define SCORINGSCHEME "Blosum62"
 int GenericJob::checkFileStatus(std::string myFileName){/*
     ifstream testFile(myFileName.c_str());
     int returnValue = (testFile.good()); // Returns true for good file, false for bad file.
@@ -220,8 +222,8 @@ int HomologJob::writeRenumberedPdbIfAbsent(){
     // getMutationString() is called on this, which is a HomologJob
     // However here getMutationString() returns a zero length string! must not have been set yet..
     // translateMutationVectorFromParent does this .. around line 1265. moving this there.
-    //Chromosome tempChromosome(  getMutationString(), myTempParameterReader.myBiopolymerClassContainer );
-    //tempChromosome.populateSequenceTable(*dbConnection);
+
+
     //// Sequence table should be populated now with both PDB and renumbered residue numbers
     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl; 
     myTempParameterReader.myBiopolymerClassContainer.setRenumberPdbResidues(1);  
@@ -914,7 +916,7 @@ void PrimaryJob::loadHomologJobVectorFromFasta( std::string myChain){
         myMkdir(fastaTempDirectory);
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;   
         std::string fastaCommand = " cd " + fastaTempDirectory + " ;  rm " + fastaTempDirectory  +"/fasta-*  ; " + fastaExecutable + " --email samuelfloresc@gmail.com --program ssearch --database pdb --stype protein --expupperlim " +(expupperlimStringStream.str() )  + " --sequence  " + sequence + " ;  sort fasta-*.ids.txt  |  /usr/bin/uniq > " + fastaShortResultsFile;
-        //std::string fastaCommand = "mkdir --verbose " + fastaTempPreDirectory + " ; mkdir --verbose " + fastaTempDirectory + " ; cd " + fastaTempDirectory + " ;  rm " + fastaTempDirectory  +"/fasta-*  ; " + fastaExecutable + " --email samuelfloresc@gmail.com --program ssearch --database pdb --stype protein --expupperlim " +(expupperlimStringStream.str() )  + " --sequence  " + sequence + " ;  sort fasta-*.ids.txt  |  /usr/bin/uniq > " + fastaShortResultsFile;
+
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Issuing:"<<std::endl<<fastaCommand<<std::endl;
         system(fastaCommand.c_str()) ;
     }
@@ -976,8 +978,6 @@ void PrimaryJob::loadHomologJobVectorFromFasta( std::string myChain){
                            std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" The PrimaryJob has already been cloned and presumably submitted. Discarded the current HomologJob"<<std::endl;
                        } // if the PrimaryJob has already been cloned, don't bother adding any additional duplicates. In the future we should look at the case of additional complexes in the same PDB file. Possibly self-children could be treated as indistinct from children which have different PDB IDs from their parent. 
                    } else {
-    
-   
                        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Adding job."<<std::endl;
                        //myHomologJob->printData(); // This can't be done here because the DB connection has not been initialized.
 	               addHomologJob(*myHomologJob); // This procedure automatically checks that this job does not already exist. If one or more with the same PDB already exists, consider merging, and with which one. Alternatively, consider creating a new one.  There may be circumstances under which a validation step would fail, think about  this.
@@ -987,7 +987,7 @@ void PrimaryJob::loadHomologJobVectorFromFasta( std::string myChain){
                    }
                } else {std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Detected that this entry: "<<value<<" in "<<fastaShortResultsFile<<"  has a fragment like : "<<myHomologJob->getCachedPdbId()<<" . Skipping this entry."<<std::endl; }
                std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
-               //myHomologJob->dbConnection->close(); // We can't have too many open connections. setJobID has been called, that is enough for now. 
+
                myHomologJob->printPrimaryToHomologChainIdMap(); 
     /**/
 	    } // of while
@@ -1085,7 +1085,7 @@ void PrimaryJob::addHomologJob(HomologJob & myHomologJob){
        } 
        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Found that myHomologJob does NOT exist in homologJobVector. Adding it now."<<std::endl;
        homologJobVector.push_back(myHomologJob); 
-       //addHomologJob(myHomologJob); // This will not be an infinite loop because there is a homologJobsAreIdentical call above.
+
        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
     }
 };
@@ -1143,8 +1143,8 @@ void HomologJob::submitCommandtoSlurm( std::string commandString , std::string m
     mySlurmJobFile << commandString<<std::endl;
     mySlurmJobFile.close();
     std::cout << __FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl; 
-    mySystemCall("chmod +x "+mySlurmJobFileName+"; "+mySlurmJobFileName);
-    //mySystemCall(std::string("sbatch ")+mySlurmJobFileName);
+    //mySystemCall("chmod +x "+mySlurmJobFileName+"; "+mySlurmJobFileName);
+    mySystemCall(std::string("sbatch ")+mySlurmJobFileName);
     std::cout << __FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl; 
 
 }
@@ -1241,8 +1241,6 @@ int PrimaryJob::createSingleHomologJobAndAddToVector( std::string myComplexChain
     addHomologJob(myHomologJob); // This procedure automatically checks that this job does not already exist. If one or more with the same PDB already exists, consider merging, and with which one. Alternatively, consider creating a new one.  There may be circumstances under which a validation step would fail, think about  this.
     return 0;
 } 
-/**/
-
 void PrimaryJob::printCorrespondenceTable(){
     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
     std::string mysqlAggregationCommand = "select SUM(foldx_energy - foldx_energy_wild_type)/count(*) from results where jobName = \"" + dbConnection->getJobID() + "\" AND ("; //AVE function returns a mysql error for some reason.
@@ -1343,8 +1341,8 @@ void PrimaryJob::printCorrespondenceTable(){
                 //homologJobVector.back().dbConnection->setPdbStatusFail(); // This step can fail, e.g. for 3CYE.pdb. 
                 std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Failed to    translate  mutation vector from parent to HomologJob. ";
                 std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" The HomologJob with PDB ID "<<homologJobVector.back().getCachedPdbId()<<" and complex string "<<homologJobVector.back().getComplexString()<<"  will be discarded."<<std::endl;
-                //homologJobVector.back().dbConnection->setPdbStatusSuccess(); // Not sure if we should wait even longer to declare success. here all we are saying is that the coordinate matching worked, which is the usual problem.
-                //homologJobVector.back().dbConnection->setPdbStatusSuccess(); // Here we are saying translateMutationVectorFromParent() succeeded.
+
+
                 std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
             } 
 	    else {
@@ -1392,18 +1390,18 @@ void PrimaryJob::printCorrespondenceTable(){
 		    std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" HomologJob jobName      : "<<homologJobVector.back().dbConnection->getJobID()<<endl;
                     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Working on HomologJob with PDB ID "<<homologJobVector.back().getCachedPdbId()<<std::endl;
                     sequenceAlignmentScoreIsSatisfactory = false; // Just being paranoid
-                    //homologJobVector.back().dbConnection->close(); // safer to close the connection before going into a big procedure like this one.
-                    // prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores returns 0 for satisfactory, 1 for unsatisfactory. 
+
+
                     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" myParameterReader->thermostatType = >"<<myParameterReader->thermostatType<<"<"<<std::endl;
-                    //homologJobVector.back().dbConnection->setPdbStatusSuccess(); // The method prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores only runs if the PDB is not flagged as FAIL. So let's reset to success, and trust that it will exit with FAIL if the following does not work.
+
                     sequenceAlignmentScoreIsSatisfactory = (!(homologJobVector.back().prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores(*myParameterReader,myConstrainedDynamics) ));
                     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" myParameterReader->thermostatType = >"<<myParameterReader->thermostatType<<"<"<<std::endl;
-                    //homologJobVector.back().initializeDbConnection((*(homologJobVector.back().getParentPrimaryJobPointer())).breederParameterReader, (*(homologJobVector.back().getParentPrimaryJobPointer())).breederParameterReader.jobId); // Now we are done, need to reopen the connection.
+
                     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
 
-                    localSequenceAlignmentScoreIsSatisfactory = false; 
+                    //localSequenceAlignmentScoreIsSatisfactory = false; 
                     // This does not work yet. Debug later. For now, we harvest current results.  
-                    if (0) localSequenceAlignmentScoreIsSatisfactory = (!(homologJobVector.back().calcLocalSequenceAlignment(myParameterReader->atomSpringContainer.getGappedThreadingVector(), myConstrainedDynamics.getCurrentState() )));
+                    //localSequenceAlignmentScoreIsSatisfactory = (!(homologJobVector.back().calcLocalSequenceAlignment(myParameterReader->atomSpringContainer.getGappedThreadingVector(), myConstrainedDynamics.getCurrentState() )));
                     // For now, we will leave the old behavior hard coded. We need to harvest existing results first.
                     localSequenceAlignmentScoreIsSatisfactory = false; 
                     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
@@ -1516,7 +1514,7 @@ If useful, this result has been added to the synopsis table. If the calculation 
                 }
             };
 
-            //homologJobVector.back().dbConnection->setPdbStatusSuccess(); // moved this line down here since homologJobVector.back().translateMutationVectorFromParent() was failing, e.g. for 3CYE.pdb
+
 
 
             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
@@ -1637,7 +1635,7 @@ void HomologJob::sequenceAlignmentIsSatisfactory( bool & needToCompute, bool & i
 			    ((*getParentPrimaryJobPointer()).getPdbId())  ,  getPdbId(), 
 			    primaryChain, 
 			    homologChain, 
-			    90.0 )
+			    SEQUENCEIDENTITYCUTOFF)
 			)
                         {
 			    std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" sequenceIdentity has been computed and is NOT NULL.     It is      found to be   satisfactory. However there may still be more chains to check.."<<std::endl;
@@ -1685,7 +1683,7 @@ int    HomologJob::prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores (Par
     std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;
     bool isSatisfactory = 0; 
     bool needToCompute  = 1;
-    double sequenceIdentityCutoff = SEQUENCEIDENTITYCUTOFF;
+    //double sequenceIdentityCutoff = SEQUENCEIDENTITYCUTOFF;
     sequenceAlignmentIsSatisfactory(needToCompute, isSatisfactory, SEQUENCEIDENTITYCUTOFF);   
     if (!(needToCompute)){
         if (isSatisfactory) {
@@ -1770,6 +1768,8 @@ int    HomologJob::prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores (Par
        thread.deadLengthIsFractionOfInitialLength = myParameterReader.alignmentForcesDeadLengthIsFractionOfInitialLength;
        if (thread.deadLengthIsFractionOfInitialLength){std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Unexplained error!"<<std::endl; exit(1); }
        thread.deadLengthFraction = myParameterReader.alignmentForcesDeadLengthFraction;
+       thread.setGapPenalty   (GAPPENALTY   );
+       thread.setScoringScheme(SCORINGSCHEME);
        if (thread.deadLengthFraction > 0) {std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Unexplained error!"<<std::endl; exit(1); }
        // enforce thread.updThreadingPartner(0).biopolymerClass to be from the HomologJob
        if ((thread.updThreadingPartner(0).biopolymerClass.getChainID() ).compare(it->second) != 0){std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Unexplained error!"<<std::endl; exit(1);}
@@ -1905,15 +1905,15 @@ int    HomologJob::prepareToAlignOnPrimaryJobAndCalcSequenceAlignmentScores (Par
 }
 
 double HomologJob::structurallyAlignOnPrimaryJobAndCalcRmsd (ParameterReader & myParameterReader, ConstrainedDynamics &  myConstrainedDynamics , double & myRmsd ) {  
-    // Leave this to be checked in printCorrespondenceTable
-    /*if (dbConnection->getPdbStatusFail()){
-        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" dbConnection->getPdbStatusFail() for this PDB ID returned: "<<dbConnection->getPdbStatusFail()<<" . Thus we will abort this function."<<std::endl;
-        return myRmsd;
-    } else {
-        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" dbConnection->getPdbStatusFail() for this PDB ID returned: "<<dbConnection->getPdbStatusFail()<<" . Thus we will continue this function."<<std::endl;
-        dbConnection->setPdbStatusFail();   // Set status to FAIL on presumption of failure of following steps. If we in fact succeed this will be updated to SUCCESS below. 
-        std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" myParameterReader.thermostatType = >"<<myParameterReader.thermostatType<<"<"<<std::endl;
-    }*/
+
+
+
+
+
+
+
+
+
     // The below replaces the second part of runDynamics():  
     
 
@@ -1989,7 +1989,7 @@ double HomologJob::structurallyAlignOnPrimaryJobAndCalcRmsd (ParameterReader & m
 }
 
 int HomologJob::translateMutationVectorFromParent(){
-    // std::map <std::string , std::string> primaryToHomologChainIdMap;
+
     if (updBiopolymerClassContainer().updMutationVector().size() > 0){
          MMBLOG_FILE_FUNC_LINE(INFO,": mutationVector has :"<<updBiopolymerClassContainer().updMutationVector().size()<<" elements. Expected 0! Quitting now to be safe. "<<std::endl);
          //ErrorManager::instance <<__FILE__<<":"<<__LINE__<<": mutationVector has :"<<updBiopolymerClassContainer().updMutationVector().size()<<" elements. Expected 0! Quitting now to be safe. "<<std::endl;
@@ -2004,8 +2004,8 @@ int HomologJob::translateMutationVectorFromParent(){
     //vector <Mutation> parentMutationVector = parentBiopolymerClassContainer.getMutationVector();
     int success = 0; // assume failure. This will be actively set to 1 in teh case of success.
     for (int i = 0; i < parentMutationVector.size() ; i++){
-    //for (int i = 0; i < (*getParentPrimaryJobPointer()).updBiopolymerClassContainer().getMutationVector().size() ; i++){
-	//(*getParentPrimaryJobPointer()).updBiopolymerClassContainer().updMutationVector()[i].print();    
+
+
 	parentMutationVector[i].print();
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;  
         std::string parentChain = parentMutationVector[i].getChain();
@@ -2014,14 +2014,12 @@ int HomologJob::translateMutationVectorFromParent(){
         std::string myChain = (primaryToHomologChainIdMap.find(parentChain))->second; // Retrieve the chain in HomologJob corresponding to parentChain in parent job
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" myChain = "<<myChain<<std::endl;  
         BiopolymerClass myBiopolymerClass = updBiopolymerClassContainer().updBiopolymerClass(myChain); // If this step fails, it is possible that the HomologJob is using a PDB ID that has had that chain manually removed. fasta goes straight to RCSB, rather than using the manipulated structures.  So you can remove the chain from the fasta file if you really don't want to use it.
-        //BiopolymerClass parentBiopolymerClass = parentBiopolymerClassContainer.updBiopolymerClass(parentChain);
-        //TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( (*parentBiopolymerClassContainer).updBiopolymerClass(parentChain) ); // The second argument , gap penalty, has a default value of -1
 	
 	//New way to create alignments. MMB no longer uses BiopolymerClassContainer, instead one must create a ThreadingStruct using an AtomSpringContainer, and then use the ThreadingStruct's computeAlign() method.
 	AtomSpringContainer myAtomSpringContainer;       	
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<"calling myAtomSpringContainer.createGappedThreading( "<<myChain<<","<<parentChain<<","<<10000<<","<<1<<",updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer))"<<  std::endl;  
 	// setting spring constant to 10k, then backboneONly to true 
-        ThreadingStruct myThreadingStruct = myAtomSpringContainer.createGappedThreading(myChain , parentChain,10000 , 1 ,updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer));
+        ThreadingStruct myThreadingStruct = myAtomSpringContainer.createGappedThreading(myChain , parentChain,10000 , 1 ,updBiopolymerClassContainer()  , (*parentBiopolymerClassContainer),GAPPENALTY,SCORINGSCHEME ); // penultimate argument is the gapPenalty, last   is the scoringScheme.  Simple allowed far too few or far too many  insertions. Suspect that Simple does not work at all.
         //std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;  
 	std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<myThreadingStruct.updThreadingPartner(0).biopolymerClass. getSequence()<<std::endl;
 	std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<myThreadingStruct.updThreadingPartner(1).biopolymerClass. getSequence()<<std::endl;
@@ -2029,11 +2027,8 @@ int HomologJob::translateMutationVectorFromParent(){
         TAlign align = myThreadingStruct.computeAlign();
         std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<std::endl;  
 
-        //TAlign align = updBiopolymerClassContainer().updBiopolymerClass(myChain).createGappedAlignment( parentBiopolymerClass ); // The second argument , gap penalty, has a default value of -1
-        //bool successfullyFoundCorrespondingMutationInCurrentBiopolymer = false;
         Mutation myMutation  ;
         if (myBiopolymerClass.getCorrespondingMutationInCurrentBiopolymer((*parentBiopolymerClassContainer).updBiopolymerClass(parentChain),align,parentMutationVector[i],myMutation) ){ // Return value of 0 indicate success
-        //if (myBiopolymerClass.getCorrespondingMutationInCurrentBiopolymer(parentBiopolymerClass,align,parentMutationVector[i],myMutation) ){ // Return value of 0 indicate success
             std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Failed to translate : "<<std::endl;
             parentMutationVector[i].print();
             return 1; // nonzero return value indicates failure.
@@ -2278,5 +2273,6 @@ void HomologJob::mergePrimaryToHomologChainIdMaps(std::map <std::string , std::s
                 std::cout<<__FILE__<<":"<<__FUNCTION__<<":"<<__LINE__<<" Primary job chain :"<< it->first <<" has corresponding homolog job chain :  "<< it->second << " . " << std::endl;
             } // of for
         }  
+
 
 
